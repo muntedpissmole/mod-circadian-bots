@@ -1,0 +1,68 @@
+[worldserver]
+
+###################################################################################################
+# MOD-CIRCADIAN-BOT
+# Daily random-bot population curve. Requires mod-playerbots.
+#
+# When the target is higher than the current online count, playerbots logs more in.
+# When the target is lower, this module logs surplus random bots out.
+###################################################################################################
+
+# Enable the schedule
+# Default: 0
+CircadianBot.Enable = 0
+
+# Peak bot count is AiPlayerbot.MaxRandomBots from playerbots.conf (Hour values
+# are a percent of that, 0-100). There is no separate CircadianBot peak so the
+# two modules cannot disagree.
+
+# How often (ms) to re-check the clock and apply the target
+# Default: 30000
+CircadianBot.CheckInterval = 30000
+
+# Max random bots to log out per check
+# Default: 40
+CircadianBot.LogoutsPerTick = 40
+
+# Write a one-line snapshot to the worldserver console (and Server.log + LogFile):
+#   CircadianBot: <online> / <target>
+# Also prints once when online first matches target:
+#   CircadianBot: target reached
+# Default: 1
+CircadianBot.Logging = 1
+
+# How often (ms) to print that line. Also prints when the local hour changes.
+# 0 = only on hour change.
+# Default: 300000 (5 minutes)
+CircadianBot.LogInterval = 300000
+
+# Append-only status file in LogsDir. Empty string disables the file; Server.log still
+# gets the same lines (grep CircadianBot). Survives worldserver restarts (append).
+# Default: CircadianBot.log
+CircadianBot.LogFile = "CircadianBot.log"
+
+# Percent of AiPlayerbot.MaxRandomBots for each local hour (server timezone)
+CircadianBot.Hour00 = 35
+CircadianBot.Hour01 = 30
+CircadianBot.Hour02 = 25
+CircadianBot.Hour03 = 25
+CircadianBot.Hour04 = 25
+CircadianBot.Hour05 = 25
+CircadianBot.Hour06 = 35
+CircadianBot.Hour07 = 40
+CircadianBot.Hour08 = 45
+CircadianBot.Hour09 = 48
+CircadianBot.Hour10 = 50
+CircadianBot.Hour11 = 55
+CircadianBot.Hour12 = 60
+CircadianBot.Hour13 = 65
+CircadianBot.Hour14 = 72
+CircadianBot.Hour15 = 80
+CircadianBot.Hour16 = 85
+CircadianBot.Hour17 = 93
+CircadianBot.Hour18 = 96
+CircadianBot.Hour19 = 100
+CircadianBot.Hour20 = 100
+CircadianBot.Hour21 = 100
+CircadianBot.Hour22 = 70
+CircadianBot.Hour23 = 50
