@@ -41,28 +41,30 @@ CircadianBot.LogInterval = 300000
 # Default: CircadianBot.log
 CircadianBot.LogFile = "CircadianBot.log"
 
-# Percent of AiPlayerbot.MaxRandomBots for each local hour (server timezone)
-CircadianBot.Hour00 = 35
-CircadianBot.Hour01 = 30
-CircadianBot.Hour02 = 25
-CircadianBot.Hour03 = 25
-CircadianBot.Hour04 = 25
-CircadianBot.Hour05 = 25
-CircadianBot.Hour06 = 35
-CircadianBot.Hour07 = 40
-CircadianBot.Hour08 = 45
-CircadianBot.Hour09 = 48
-CircadianBot.Hour10 = 50
-CircadianBot.Hour11 = 55
-CircadianBot.Hour12 = 60
-CircadianBot.Hour13 = 65
-CircadianBot.Hour14 = 72
-CircadianBot.Hour15 = 80
-CircadianBot.Hour16 = 85
-CircadianBot.Hour17 = 93
-CircadianBot.Hour18 = 96
+# Percent of AiPlayerbot.MaxRandomBots for each local hour (server timezone).
+# Evening fades through midnight into a 02:00-06:00 trough (3am-4am at 3% /
+# 120 bots when peak is 4000), then a slow climb to an evening peak at 18:00-20:00.
+CircadianBot.Hour00 = 48
+CircadianBot.Hour01 = 22
+CircadianBot.Hour02 = 5
+CircadianBot.Hour03 = 3
+CircadianBot.Hour04 = 3
+CircadianBot.Hour05 = 5
+CircadianBot.Hour06 = 6
+CircadianBot.Hour07 = 12
+CircadianBot.Hour08 = 20
+CircadianBot.Hour09 = 28
+CircadianBot.Hour10 = 34
+CircadianBot.Hour11 = 40
+CircadianBot.Hour12 = 48
+CircadianBot.Hour13 = 52
+CircadianBot.Hour14 = 58
+CircadianBot.Hour15 = 66
+CircadianBot.Hour16 = 80
+CircadianBot.Hour17 = 92
+CircadianBot.Hour18 = 100
 CircadianBot.Hour19 = 100
 CircadianBot.Hour20 = 100
-CircadianBot.Hour21 = 100
-CircadianBot.Hour22 = 70
-CircadianBot.Hour23 = 50
+CircadianBot.Hour21 = 96
+CircadianBot.Hour22 = 84
+CircadianBot.Hour23 = 68
