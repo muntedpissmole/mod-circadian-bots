@@ -1,6 +1,6 @@
 # ![logo](https://raw.githubusercontent.com/azerothcore/azerothcore.github.io/master/images/logo-github.png) AzerothCore
 
-# mod-circadian-bot
+# mod-circadian-bots
 
 A module for the [Playerbots AzerothCore fork](https://github.com/mod-playerbots/azerothcore-wotlk/tree/Playerbot) and [mod-playerbots](https://github.com/mod-playerbots/mod-playerbots).
 
@@ -82,4 +82,4 @@ GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
 ### Credits
 
 - AzerothCore (Playerbots fork): [repository](https://github.com/mod-playerbots/azerothcore-wotlk)
-- Playerbots: [mod-playerbots](https://github.com/mod-playerbots/mod-playerbots) - [discord](https://discord.gg/NQm5QShwf9)
+- Playerbots: [mod-playerbots](https://github.com/mod-playerbots/mod-playerbots)
