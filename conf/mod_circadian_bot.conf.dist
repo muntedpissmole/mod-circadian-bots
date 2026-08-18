@@ -9,8 +9,8 @@
 ###################################################################################################
 
 # Enable the schedule
-# Default: 0
-CircadianBot.Enable = 0
+# Default: 1
+CircadianBot.Enable = 1
 
 # Peak bot count is AiPlayerbot.MaxRandomBots from playerbots.conf (Hour values
 # are a percent of that, 0-100). There is no separate CircadianBot peak so the
@@ -42,8 +42,8 @@ CircadianBot.LogInterval = 300000
 CircadianBot.LogFile = "CircadianBot.log"
 
 # Percent of AiPlayerbot.MaxRandomBots for each local hour (server timezone).
-# Evening fades through midnight into a 02:00-06:00 trough (3am-4am at 3% /
-# 120 bots when peak is 4000), then a slow climb to an evening peak at 18:00-20:00.
+# Weekday: evening fades through midnight into a 2am-6am trough, then a
+# slow climb to an evening peak at 6pm-8pm (work/school pattern).
 CircadianBot.Hour00 = 48
 CircadianBot.Hour01 = 22
 CircadianBot.Hour02 = 5
@@ -61,10 +61,73 @@ CircadianBot.Hour13 = 52
 CircadianBot.Hour14 = 58
 CircadianBot.Hour15 = 66
 CircadianBot.Hour16 = 80
-CircadianBot.Hour17 = 92
-CircadianBot.Hour18 = 100
+CircadianBot.Hour17 = 85
+CircadianBot.Hour18 = 90
 CircadianBot.Hour19 = 100
 CircadianBot.Hour20 = 100
 CircadianBot.Hour21 = 96
 CircadianBot.Hour22 = 84
 CircadianBot.Hour23 = 68
+
+# Saturday and Sunday (local tm_wday). Typical MMO/Steam weekend: later
+# nights, much busier mornings, then a high plateau from midday through late.
+# Saturday 10am is already ~72% of peak; 1pm-9pm sits at 94-100%.
+CircadianBot.Weekend.Hour00 = 62
+CircadianBot.Weekend.Hour01 = 38
+CircadianBot.Weekend.Hour02 = 14
+CircadianBot.Weekend.Hour03 = 8
+CircadianBot.Weekend.Hour04 = 6
+CircadianBot.Weekend.Hour05 = 8
+CircadianBot.Weekend.Hour06 = 16
+CircadianBot.Weekend.Hour07 = 28
+CircadianBot.Weekend.Hour08 = 42
+CircadianBot.Weekend.Hour09 = 58
+CircadianBot.Weekend.Hour10 = 72
+CircadianBot.Weekend.Hour11 = 82
+CircadianBot.Weekend.Hour12 = 90
+CircadianBot.Weekend.Hour13 = 94
+CircadianBot.Weekend.Hour14 = 96
+CircadianBot.Weekend.Hour15 = 98
+CircadianBot.Weekend.Hour16 = 100
+CircadianBot.Weekend.Hour17 = 100
+CircadianBot.Weekend.Hour18 = 100
+CircadianBot.Weekend.Hour19 = 100
+CircadianBot.Weekend.Hour20 = 100
+CircadianBot.Weekend.Hour21 = 98
+CircadianBot.Weekend.Hour22 = 90
+CircadianBot.Weekend.Hour23 = 78
+
+###################################################################################################
+# CITY HANGOUT
+# While enabled, Stormwind and Orgrimmar aim for MajorHub bodies
+# when the hourly schedule is at 100%. Other hours scale with that
+# same table (28% at 9am weekday → 28% of MajorHub). Ironforge /
+# Undercity / Shattrath / Dalaran get half; Darnassus / Thunder
+# Bluff / Exodar / Silvermoon get 30%. MajorHub is independent of
+# AiPlayerbot.MaxRandomBots.
+###################################################################################################
+
+# Enable city hangout. CircadianBot.Enable must also be on.
+# Default: 1
+CircadianBot.CityHangout.Enable = 1
+
+# Max bots that start a gryphon or overland trip toward a hub per check
+# Default: 3
+CircadianBot.CityHangout.NudgesPerTick = 3
+
+# Minimum level to send into a hub (Shattrath 58+, Dalaran 68+ still apply)
+# Default: 10
+CircadianBot.CityHangout.MinLevel = 10
+
+# How long a newly arrived bot is biased to linger (seconds). After this
+# they may head out even if the square is still below target.
+# Default: 480-1200 (8-20 minutes)
+CircadianBot.CityHangout.MinSession = 480
+CircadianBot.CityHangout.MaxSession = 1200
+
+# Stormwind / Orgrimmar crowd when the hourly schedule is at 100%.
+# Mid hubs get half; smaller capitals get 30%. Scales with Hour00-23
+# / Weekend.Hour00-23. Independent of MaxRandomBots — raise it to
+# pack the cities, lower it to leave more people in the world.
+# Default: 50
+CircadianBot.CityHangout.MajorHub = 50
