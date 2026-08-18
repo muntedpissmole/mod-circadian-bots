@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 class Player;
+class WorldPosition;
 
 class CircadianBot
 {
@@ -47,6 +48,8 @@ private:
     void UpdateCityHangout();
     void PruneHangouts();
     void ExtendCityDwell();
+    bool SendOutOfCity(Player* bot);
+    uint32 EvictSurplusCityBots(uint32 maxEvict);
     uint32 NudgeTowardCities(uint32 maxNudges);
     bool CanNudge(Player* bot) const;
     bool IsInCapital(Player const* bot) const;
@@ -55,6 +58,8 @@ private:
     void ApplyCityHangout(Player* bot);
     bool TryWalkToCapital(Player* bot);
     bool TryFlyToCapital(Player* bot);
+    bool TeleportBotTo(Player* bot, WorldPosition const& dest);
+    void SeedCityHangouts();
     void CountBotsByZone(std::unordered_map<uint32, uint32>& out) const;
     uint32 DesiredHubCrowd(uint32 zoneId) const;
 
@@ -69,7 +74,9 @@ private:
     uint32 _cityMinLevel = 10;
     uint32 _cityMinSession = 480;
     uint32 _cityMaxSession = 1200;
-    uint32 _cityMajorHub = 50;
+    uint32 _cityMajorHub = 100;
+    bool _seedOnStart = true;
+    bool _citiesSeeded = false;
     uint32 _manualTarget = 0;
     uint32 _elapsed = 0;
     uint32 _logElapsed = 0;

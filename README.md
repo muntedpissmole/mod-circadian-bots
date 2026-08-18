@@ -54,7 +54,7 @@ Customise to suit your hardware.
 AiPlayerbot.MaxRandomBots = 4000
 ```
 
-`mod_circadian_bot.conf`:
+`mod_circadian_bots.conf`:
 
 ```ini
 CircadianBot.Enable = 1
@@ -82,7 +82,7 @@ Entries go to `Server.log`. If you set `LogFile` they're saved to their own file
 
 ### Hourly population schedule
 
-`Hour00`–`Hour23` are a percentage of `AiPlayerbot.MaxRandomBots` (0–100) on weekdays. Defaults follow a work/school day: quiet overnight, a slow climb throughout the morning and day, and an evening peak from 6pm to 9pm. Weekends stay busier in the morning and sit near peak from midday through late night, following usual MMO patterns.
+`Hour00`–`Hour23` are a percentage of `AiPlayerbot.MaxRandomBots` (0–100) on weekdays. The live target blends from this hour toward the next through the 60 minutes, so both the realm pop and the city hangouts ramp during the hour instead of jumping at :00. Defaults follow a work/school day: quiet overnight, a slow climb throughout the morning and day, and an evening peak from 6pm to 9pm. Weekends stay busier in the morning and sit near peak from midday through late night, following usual MMO patterns.
 
 | Hour | Weekday | Weekend |
 | --- | --- | --- |
@@ -94,7 +94,9 @@ Entries go to `Server.log`. If you set `LogFile` they're saved to their own file
 
 ### City hangouts
 
-While hangouts are enabled (default), a set number of bots hang around the capitals. A fixed number, not percentage.
+While hangouts are enabled (default), most of the crowd stands in the auction house; the rest mill on the fountain / mailbox square. A fixed number, not percentage.
+
+On worldserver start, once most random bots are online, the module teleports to snap each hub to the current hour (Dalaran extras become Stormwind bodies, and so on). After that they walk and fly with the curve. Set `CircadianBot.CityHangout.SeedOnStart = 0` to turn the startup warp off.
 
 Set `CircadianBot.CityHangout.Enable = 0` to turn this off.
 
@@ -106,15 +108,15 @@ Set `CircadianBot.CityHangout.Enable = 0` to turn this off.
 
 Bots take a gryphon when a flight master is nearby; otherwise they ride. Playerbots may teleport a bot if it's stuck.
 
-`MajorHub` (default 50) is the Stormwind / Orgrimmar crowd when the hourly schedule is at 100%. It is a fixed cap, not a percent of `MaxRandomBots`, so you can configure the crowd size to your hardware and tastes. `MajorHub` scales with the population table, for example using a value of 50, at 9am on a weekday (28%) is about 14 in Stormwind. Raise it to fill the cities, or lower it to leave more people out questing. Ironforge, Undercity, Shattrath, and Dalaran get half of `MajorHub`. Darnassus, Thunder Bluff, Exodar, and Silvermoon get 30%.
+`MajorHub` (default 100) is the Stormwind / Orgrimmar crowd when the hourly schedule is at 100%. It is a fixed cap, not a percent of `MaxRandomBots`, so you can configure the crowd size to your hardware and tastes. `MajorHub` scales with the population table, for example using a value of 100, at 9am on a weekday (28%) is about 28 in Stormwind. Raise it to fill the cities, or lower it to leave more people out questing. Ironforge, Undercity, Shattrath, and Dalaran get half of `MajorHub`. Darnassus, Thunder Bluff, Exodar, and Silvermoon get 30%.
 
 | Hub | 9am weekday | 7pm (100%) |
 | --- | --- | --- |
-| Stormwind, Orgrimmar | 14 | 50 |
-| Ironforge, Undercity, Shattrath, Dalaran | 7 | 25 |
-| Darnassus, Thunder Bluff, Exodar, Silvermoon | 4 | 15 |
+| Stormwind, Orgrimmar | 28 | 100 |
+| Ironforge, Undercity, Shattrath, Dalaran | 14 | 50 |
+| Darnassus, Thunder Bluff, Exodar, Silvermoon | 8 | 30 |
 
-`.circadian status` prints the city total and a per-hub breakdown (`Stormwind 48/50`). When surplus logouts are needed, extra city bots go first so the hubs empty as the realm quiets down.
+`.circadian status` prints the city total and a per-hub breakdown (`Stormwind 95/100 (40 square)`). `square` is how many are actually at the bank/AH. Playerbots will walk extra bots into capitals on its own; this module sends the surplus back out to grind so the city count stays near the cap. When the realm itself is over target, extra city bots log out first.
 
 ## Commands
 

@@ -1,7 +1,7 @@
 [worldserver]
 
 ###################################################################################################
-# MOD-CIRCADIAN-BOT
+# MOD-CIRCADIAN-BOTS
 # Daily random-bot population curve. Requires mod-playerbots.
 #
 # When the target is higher than the current online count, playerbots logs more in.
@@ -42,6 +42,9 @@ CircadianBot.LogInterval = 300000
 CircadianBot.LogFile = "CircadianBot.log"
 
 # Percent of AiPlayerbot.MaxRandomBots for each local hour (server timezone).
+# These are the values at the top of the hour; the module blends toward
+# the next hour through the 60 minutes so bots start walking before the
+# clock ticks (city hangout uses the same curve).
 # Weekday: evening fades through midnight into a 2am-6am trough, then a
 # slow climb to an evening peak at 6pm-8pm (work/school pattern).
 CircadianBot.Hour00 = 48
@@ -100,6 +103,7 @@ CircadianBot.Weekend.Hour23 = 78
 ###################################################################################################
 # CITY HANGOUT
 # While enabled, Stormwind and Orgrimmar aim for MajorHub bodies
+# at the bank / auction house (Trade District, Valley of Strength)
 # when the hourly schedule is at 100%. Other hours scale with that
 # same table (28% at 9am weekday → 28% of MajorHub). Ironforge /
 # Undercity / Shattrath / Dalaran get half; Darnassus / Thunder
@@ -111,7 +115,15 @@ CircadianBot.Weekend.Hour23 = 78
 # Default: 1
 CircadianBot.CityHangout.Enable = 1
 
-# Max bots that start a gryphon or overland trip toward a hub per check
+# Once bots have mostly logged in after a worldserver start, teleport
+# to snap each hub to the current hourly crowd (fountain / extras out
+# to the world). After that they walk. Off = 0.
+# Default: 1
+CircadianBot.CityHangout.SeedOnStart = 1
+
+# Min bots that start a gryphon or overland trip toward a hub per check.
+# When a hub is far behind the hourly curve this scales up (up to x8)
+# so the square fills during the afternoon ramp, not after peak.
 # Default: 3
 CircadianBot.CityHangout.NudgesPerTick = 3
 
@@ -129,5 +141,7 @@ CircadianBot.CityHangout.MaxSession = 1200
 # Mid hubs get half; smaller capitals get 30%. Scales with Hour00-23
 # / Weekend.Hour00-23. Independent of MaxRandomBots — raise it to
 # pack the cities, lower it to leave more people in the world.
-# Default: 50
-CircadianBot.CityHangout.MajorHub = 50
+# This is a cap: extras (playerbots camping at inns / flying in) are
+# sent back out to grind. They are not logged out.
+# Default: 100
+CircadianBot.CityHangout.MajorHub = 100
