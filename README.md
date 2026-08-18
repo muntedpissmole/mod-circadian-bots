@@ -6,11 +6,11 @@ A module for the [Playerbots AzerothCore fork](https://github.com/mod-playerbots
 
 ## Description
 
-This module makes your realm feel alive at the right times of day, instead of having a flat bot count sitting online 24/7. Back in the glory days, a realm's population was quiet before dawn, filled through the afternoon, peaked in the evening, and went quiet again after midnight — this module reproduces that rhythm automatically, so a player logging in at 3am finds a sleepy realm and a player logging in at 8pm walks into a packed one.
+This module makes your realm feel alive at the busy times of day instead of having a constant flat bot count. Back in the glory days, a realm's population was quiet before dawn, filled through the afternoon, peaked in the evening, and went quiet again after midnight — this module reproduces that so a player logging in at 3am finds a quiet, sleepy realm and a player logging in at 8pm sees a busy server.
+
+It works by logging bots in or out to hit an hourly target you define as a percentage of your max bot count — for example, 30% online at 9am and 100% online at 7pm. You set one schedule for weekdays and a busier one for weekends, and the module gradually brings the population up or down to suit. During peak hours bots gather in major player hubs like Stormwind and Orgrimmar so those cities feel busy the way they used to. If you have bots in your guild this adds to the realism by varying the "players online" count.
 
 When lowering the population cap a bot that's grouped, in combat, flying, or in a battleground does not get logged out.
-
-It works by logging bots in or out to hit an hourly target you define as a percentage of your max bot count — for example, 30% online at 9am, 100% online at 7pm. You set one schedule for weekdays and a busier one for weekends, and the module gradually brings the population up or down to suit. During peak hours bots gather in major player hubs like Stormwind and Orgrimmar so those cities feel busy the way they used to.
 
 ## Requirements
 
@@ -94,7 +94,7 @@ Entries go to `Server.log`. If you set `LogFile` they're saved to their own file
 
 ### City hangouts
 
-While hangouts are on (default), a set number of bots hang around the capitals. A fixed number, not percentage.
+While hangouts are enabled (default), a set number of bots hang around the capitals. A fixed number, not percentage.
 
 Set `CircadianBot.CityHangout.Enable = 0` to turn this off.
 
@@ -104,9 +104,9 @@ Set `CircadianBot.CityHangout.Enable = 0` to turn this off.
 | Horde | Orgrimmar, Undercity, Thunder Bluff, Silvermoon |
 | Neutral | Shattrath (level 58+), Dalaran (level 68+) |
 
-Bots take a gryphon when a flight master is nearby; otherwise they ride. Playerbots may teleport a bot stuck on a long path.
+Bots take a gryphon when a flight master is nearby; otherwise they ride. Playerbots may teleport a bot if it's stuck.
 
-`MajorHub` (default 50) is the Stormwind / Orgrimmar crowd when the hourly schedule is at 100%. It does not follow `MaxRandomBots` — raise it to pack the cities, lower it to leave more people out questing. Other hours use the same weekday/weekend table as the bot count, so 9am on a weekday (28%) is about 14 in Stormwind. Ironforge, Undercity, Shattrath, and Dalaran get half of `MajorHub`. Darnassus, Thunder Bluff, Exodar, and Silvermoon get 30%.
+`MajorHub` (default 50) is the Stormwind / Orgrimmar crowd when the hourly schedule is at 100%. It is a fixed cap, not a percent of `MaxRandomBots`, so you can configure the crowd size to your hardware and tastes. `MajorHub` scales with the population table, for example using a value of 50, at 9am on a weekday (28%) is about 14 in Stormwind. Raise it to fill the cities, or lower it to leave more people out questing. Ironforge, Undercity, Shattrath, and Dalaran get half of `MajorHub`. Darnassus, Thunder Bluff, Exodar, and Silvermoon get 30%.
 
 | Hub | 9am weekday | 7pm (100%) |
 | --- | --- | --- |
