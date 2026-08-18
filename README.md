@@ -38,7 +38,7 @@ AiPlayerbot.MaxRandomBotInWorldTime = 14400
 
 | Option | Function |
 | --- | --- |
-| `EnablePeriodicOnlineOffline` | If `0`, Playerbots tells bots to stay for a year. This module still logs surplus bots out when the cap drops. |
+| `EnablePeriodicOnlineOffline` | If `0`, Playerbots tells bots to stay for a year and will not log them out on its own. This module still logs surplus bots out when the cap drops. |
 | `MinRandomBotInWorldTime` | Soonest a bot may log out on its own, in seconds. `3600` = 1 hour. |
 | `MaxRandomBotInWorldTime` | Latest a bot may log out on its own, in seconds. `14400` = 4 hours. |
 
