@@ -28,21 +28,21 @@ When lowering the population cap a bot that's grouped, in combat, flying, or in 
 
 Set `AiPlayerbot.MaxRandomBots` in `playerbots.conf` to the peak bot population for your realm. This module treats that value as 100% for the hourly schedule.
 
-Playerbots keeps bots logged in for up to a year, so they will not log out when the cap lowers unless you change the following in `playerbots.conf`:
+This module tells surplus bots to log out when the cap drops, but Playerbots will not actually let them leave unless its own online/offline timer is on. Without the following, bots stay in the world (or bounce straight back) even after they are told to log out:
 
 ```ini
 AiPlayerbot.EnablePeriodicOnlineOffline = 1
-AiPlayerbot.MinRandomBotInWorldTime = 7200
+AiPlayerbot.MinRandomBotInWorldTime = 3600
 AiPlayerbot.MaxRandomBotInWorldTime = 14400
 ```
 
 | Option | Function |
 | --- | --- |
-| `EnablePeriodicOnlineOffline` | If `0`, Playerbots tells bots to stay for a year and will not log them out on its own. This module still logs surplus bots out when the cap drops. |
-| `MinRandomBotInWorldTime` | Soonest a bot may log out on its own, in seconds. `3600` = 1 hour. |
-| `MaxRandomBotInWorldTime` | Latest a bot may log out on its own, in seconds. `14400` = 4 hours. |
+| `EnablePeriodicOnlineOffline` | Must be `1` |
+| `MinRandomBotInWorldTime` | Soonest a bot may log out, in seconds. `3600` = 1 hour. |
+| `MaxRandomBotInWorldTime` | Latest a bot may log out, in seconds. `14400` = 4 hours. |
 
-Also leave `AiPlayerbot.PeriodicOnlineOfflineRatio` at `2.0` or higher (the default) so there are enough offline bots to rotate in.
+Leave `AiPlayerbot.PeriodicOnlineOfflineRatio` at `2.0` or higher (the default) so there are enough offline bots to bring back when the cap rises.
 
 ## Module configuration
 
@@ -51,7 +51,7 @@ Customise to suit your hardware.
 `playerbots.conf`:
 
 ```ini
-AiPlayerbot.MaxRandomBots = 500
+AiPlayerbot.MaxRandomBots = 4000
 ```
 
 `mod_circadian_bot.conf`:
