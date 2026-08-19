@@ -94,7 +94,7 @@ Entries go to `Server.log`. If you set `LogFile` they're saved to their own file
 
 ### City hangouts
 
-While hangouts are enabled (default), most of the crowd stands in the auction house; the rest mill on the fountain / mailbox square. A fixed number, not percentage.
+While hangouts are enabled (default), the crowd splits across the auction house and the fountain / commons — Stormwind Trade District fountain and AH door (the hall itself is not on the path mesh), Orgrimmar Valley of Strength, Ironforge Commons, and the same spots in every other capital. A fixed number, not percentage.
 
 On worldserver start, once most random bots are online, the module teleports to snap each hub to the current hour (Dalaran extras become Stormwind bodies, and so on). After that they walk and fly with the curve. Set `CircadianBot.CityHangout.SeedOnStart = 0` to turn the startup warp off.
 

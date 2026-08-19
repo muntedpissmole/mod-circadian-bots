@@ -23,8 +23,10 @@
 #include "TravelNode.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <fstream>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -42,18 +44,22 @@ struct CityHub
     std::vector<uint32> hinterlands;
     std::vector<uint32> bankers;
     std::vector<WorldPosition> hangouts;
+    std::vector<WorldPosition> ahSpots;
     WorldPosition dest;
     bool resolved = false;
     uint32 peak = 0;
+    std::vector<WorldPosition> ahHangouts;
+    std::vector<WorldPosition> plazaHangouts;
 };
 
-// Most dests are on the auction-house floor (the room, a few yards off
-// the auctioneers). The plaza / mailboxes stay in the pool so the
-// fountain is not empty. WanderNpc walks 150 yards to any trainer.
+// Walk dests stay on the bank/AH square. Indoor halls (Stormwind
+// Trade District AH) are not on the mmap — pathing to that floor
+// launches bots through the air across the city.
 float const HANGOUT_RADIUS = 55.0f;
 float const HANGOUT_CLUSTER = 150.0f;
 float const HANGOUT_MAIL_RADIUS = 80.0f;
 float const HANGOUT_DOOR_OFFSET = 18.0f;
+float const HANGOUT_GROUND_SLOP = 3.0f;
 
 // Every major player hub. Stormwind/Orgrimmar are weighted 3x because they
 // were the busiest squares, not because they are the only destinations.
@@ -64,34 +70,34 @@ void InitCityHubs()
     g_cityHubs = {
         { AREA_STORMWIND_CITY,  TEAM_ALLIANCE, MAP_EASTERN_KINGDOMS, 10, "Stormwind",     3,
           { AREA_ELWYNN_FOREST, AREA_WESTFALL, AREA_REDRIDGE_MOUNTAINS, AREA_DUSKWOOD },
-          { 2455, 2456, 2457 }, {}, {}, false },
+          { 2455, 2456, 2457 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_IRONFORGE,       TEAM_ALLIANCE, MAP_EASTERN_KINGDOMS, 10, "Ironforge",     1,
           { AREA_DUN_MOROGH, AREA_LOCH_MODAN, AREA_WETLANDS },
-          { 2460, 2461, 5099 }, {}, {}, false },
+          { 2460, 2461, 5099 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_UNDERCITY,       TEAM_HORDE,    MAP_EASTERN_KINGDOMS, 10, "Undercity",     1,
           { AREA_TIRISFAL_GLADES, AREA_SILVERPINE_FOREST },
-          { 4549, 2459, 2458, 4550 }, {}, {}, false },
+          { 4549, 2459, 2458, 4550 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_ORGRIMMAR,       TEAM_HORDE,    MAP_KALIMDOR,         10, "Orgrimmar",     3,
           { AREA_DUROTAR, AREA_THE_BARRENS },
-          { 3320, 3309, 3318 }, {}, {}, false },
+          { 3320, 3309, 3318 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_THUNDER_BLUFF,   TEAM_HORDE,    MAP_KALIMDOR,         10, "Thunder Bluff", 1,
           { AREA_MULGORE },
-          { 2996, 8356, 8357 }, {}, {}, false },
+          { 2996, 8356, 8357 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_DARNASSUS,       TEAM_ALLIANCE, MAP_KALIMDOR,         10, "Darnassus",     1,
           { AREA_TELDRASSIL },
-          { 4155, 4208, 4209 }, {}, {}, false },
+          { 4155, 4208, 4209 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_THE_EXODAR,      TEAM_ALLIANCE, MAP_OUTLAND,          10, "Exodar",        1,
           { AREA_AZUREMYST_ISLE, AREA_BLOODMYST_ISLE },
-          { 17773, 18350, 16710 }, {}, {}, false },
+          { 17773, 18350, 16710 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_SILVERMOON_CITY, TEAM_HORDE,    MAP_OUTLAND,          10, "Silvermoon",    1,
           { AREA_EVERSONG_WOODS, AREA_GHOSTLANDS },
-          { 17631, 17632, 17633, 16615, 16616, 16617 }, {}, {}, false },
+          { 17631, 17632, 17633, 16615, 16616, 16617 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_SHATTRATH_CITY,  TEAM_NEUTRAL,  MAP_OUTLAND,          58, "Shattrath",     1,
           { AREA_TEROKKAR_FOREST },
-          { 19246, 19338, 19034, 19318 }, {}, {}, false },
+          { 19246, 19338, 19034, 19318 }, {}, {}, {}, false, 0, {}, {} },
         { AREA_DALARAN,         TEAM_NEUTRAL,  MAP_NORTHREND,        68, "Dalaran",       1,
           { AREA_CRYSTALSONG_FOREST },
-          { 30604, 30605, 30607, 28675, 28676, 28677, 29530 }, {}, {}, false },
+          { 30604, 30605, 30607, 28675, 28676, 28677, 29530 }, {}, {}, {}, false, 0, {}, {} },
     };
 }
 
@@ -108,13 +114,46 @@ CityHub const* HubByZone(uint32 zoneId)
     return FindHub(zoneId);
 }
 
-WorldPosition const* PickHangout(CityHub const& hub)
+WorldPosition const* PickFrom(std::vector<WorldPosition> const& dests)
 {
+    if (dests.empty())
+        return nullptr;
+    return &dests[urand(0, static_cast<uint32>(dests.size()) - 1)];
+}
+
+WorldPosition const* PickHangout(CityHub const& hub, bool preferAh)
+{
+    // Seed and inbound both bias the AH a little so the door stays
+    // busy; plaza still gets a real share. A one-way peel emptied it.
+    uint32 const ahChance = preferAh ? 55 : 50;
+    if (urand(1, 100) <= ahChance)
+    {
+        if (WorldPosition const* dest = PickFrom(hub.ahHangouts))
+            return dest;
+    }
+    if (WorldPosition const* dest = PickFrom(hub.plazaHangouts))
+        return dest;
+    if (WorldPosition const* dest = PickFrom(hub.ahHangouts))
+        return dest;
     if (!hub.hangouts.empty())
         return &hub.hangouts[urand(0, static_cast<uint32>(hub.hangouts.size()) - 1)];
     if (hub.resolved)
         return &hub.dest;
     return nullptr;
+}
+
+bool NearAhHangout(Player const* bot, CityHub const& hub)
+{
+    if (!bot || hub.ahHangouts.empty())
+        return false;
+    for (WorldPosition const& pos : hub.ahHangouts)
+    {
+        if (pos.GetMapId() != bot->GetMapId())
+            continue;
+        if (bot->GetExactDist(pos) <= 14.0f)
+            return true;
+    }
+    return false;
 }
 
 float DistToHangout(Player const* bot, CityHub const& hub)
@@ -246,68 +285,188 @@ WorldPosition TowardPlaza(WorldPosition const& from, WorldPosition const& plaza,
         from.GetOrientation());
 }
 
+float GroundDelta(WorldPosition const& pos)
+{
+    Map const* map = sMapMgr->CreateBaseMap(pos.GetMapId());
+    if (!map)
+        return 0.0f;
+    float const z = map->GetHeight(PHASEMASK_NORMAL, pos.GetPositionX(), pos.GetPositionY(),
+        pos.GetPositionZ() + 2.0f, true);
+    if (z <= INVALID_HEIGHT)
+        return 99999.0f;
+    float dz = z - pos.GetPositionZ();
+    if (dz < 0.0f)
+        dz = -dz;
+    return dz;
+}
+
+bool OnWalkMesh(WorldPosition const& pos)
+{
+    return GroundDelta(pos) <= HANGOUT_GROUND_SLOP;
+}
+
+bool IsFountainTemplate(GameObjectTemplate const* tmpl)
+{
+    if (!tmpl)
+        return false;
+    if (tmpl->type != GAMEOBJECT_TYPE_GENERIC && tmpl->type != GAMEOBJECT_TYPE_SPELL_FOCUS)
+        return false;
+
+    std::string name = tmpl->name;
+    std::transform(name.begin(), name.end(), name.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (name.find("fountain") == std::string::npos)
+        return false;
+    if (name.find("ruined") != std::string::npos || name.find("plagued") != std::string::npos)
+        return false;
+    if (name.find("spell") != std::string::npos || name.find("doodad") != std::string::npos)
+        return false;
+    return true;
+}
+
 WorldPosition SnapToGround(WorldPosition pos)
 {
     Map const* map = sMapMgr->CreateBaseMap(pos.GetMapId());
     if (!map)
         return pos;
-    float const z = map->GetHeight(PHASEMASK_NORMAL, pos.GetPositionX(), pos.GetPositionY(),
-        pos.GetPositionZ() + 5.0f, true);
+    float const hint = pos.GetPositionZ();
+    float z = map->GetHeight(PHASEMASK_NORMAL, pos.GetPositionX(), pos.GetPositionY(),
+        hint + 2.0f, true);
+    if (z <= INVALID_HEIGHT)
+        z = map->GetHeight(PHASEMASK_NORMAL, pos.GetPositionX(), pos.GetPositionY(),
+            hint + 2.0f, false);
     if (z > INVALID_HEIGHT)
-        pos.setZ(z);
+    {
+        float dz = z - hint;
+        if (dz < 0.0f)
+            dz = -dz;
+        // Roof / canal / street-under-floor snaps put dests in the air.
+        if (dz <= HANGOUT_GROUND_SLOP)
+            pos.setZ(z);
+    }
     return pos;
 }
 
 void AddHangout(std::vector<WorldPosition>& dests, WorldPosition const& pos, uint32 copies)
 {
-    WorldPosition const snapped = SnapToGround(pos);
+    if (!OnWalkMesh(pos))
+        return;
     for (uint32 i = 0; i < copies; ++i)
-        dests.push_back(snapped);
+        dests.push_back(pos);
 }
 
-void BuildPlazaHangouts(CityHub& hub, std::vector<WorldPosition> const& cluster,
-    std::vector<WorldPosition> const& mailboxes, std::vector<WorldPosition> const& auctioneers)
+void AddPlazaRing(std::vector<WorldPosition>& dests, WorldPosition const& center)
 {
-    hub.hangouts.clear();
-    if (cluster.empty())
-        return;
-
-    WorldPosition const plaza = SnapToGround(HangoutCentroid(cluster));
-
-    // AH hall: step off the auctioneer toward the door so they fill the
-    // room. Repeated so PickHangout lands here more often than the fountain.
-    if (!auctioneers.empty())
-    {
-        WorldPosition ahCenter = HangoutCentroid(auctioneers);
-        ahCenter = SnapToGround(TowardPlaza(ahCenter, plaza, 10.0f));
-        AddHangout(hub.hangouts, ahCenter, 4);
-        float const ahRing[4][2] = { { 4.0f, 0.0f }, { -4.0f, 0.0f }, { 0.0f, 4.0f }, { 0.0f, -4.0f } };
-        for (auto const& d : ahRing)
-        {
-            AddHangout(hub.hangouts, WorldPosition(ahCenter.GetMapId(),
-                ahCenter.GetPositionX() + d[0], ahCenter.GetPositionY() + d[1],
-                ahCenter.GetPositionZ(), 0.0f), 3);
-        }
-        for (WorldPosition const& auctioneer : auctioneers)
-            AddHangout(hub.hangouts, TowardPlaza(auctioneer, plaza, 10.0f), 3);
-    }
-
-    AddHangout(hub.hangouts, plaza, 2);
-    float const ring[6][2] = {
-        { 8.0f, 0.0f }, { -8.0f, 0.0f }, { 0.0f, 8.0f }, { 0.0f, -8.0f },
-        { 6.0f, 6.0f }, { -6.0f, 6.0f }
+    float const ring[8][2] = {
+        { 16.0f, 0.0f }, { -16.0f, 0.0f }, { 0.0f, 16.0f }, { 0.0f, -16.0f },
+        { 12.0f, 12.0f }, { -12.0f, 12.0f }, { 12.0f, -12.0f }, { -12.0f, -12.0f }
     };
     for (auto const& d : ring)
     {
-        hub.hangouts.push_back(SnapToGround(WorldPosition(plaza.GetMapId(),
-            plaza.GetPositionX() + d[0], plaza.GetPositionY() + d[1], plaza.GetPositionZ(), 0.0f)));
+        AddHangout(dests, SnapToGround(WorldPosition(center.GetMapId(),
+            center.GetPositionX() + d[0], center.GetPositionY() + d[1], center.GetPositionZ(), 0.0f)), 1);
     }
+}
+
+void MergeHangouts(CityHub& hub)
+{
+    hub.hangouts.clear();
+    hub.hangouts.insert(hub.hangouts.end(), hub.ahHangouts.begin(), hub.ahHangouts.end());
+    hub.hangouts.insert(hub.hangouts.end(), hub.plazaHangouts.begin(), hub.plazaHangouts.end());
+}
+
+void BuildPlazaHangouts(CityHub& hub, std::vector<WorldPosition> const& cluster,
+    std::vector<WorldPosition> const& mailboxes, std::vector<WorldPosition> const& auctioneers,
+    std::vector<WorldPosition> const& fountains, std::vector<WorldPosition> const& chairs)
+{
+    hub.hangouts.clear();
+    hub.ahSpots.clear();
+    hub.ahHangouts.clear();
+    hub.plazaHangouts.clear();
+    if (cluster.empty())
+        return;
+
+    // Plaza center is the fountain when the city has one (Stormwind
+    // Trade District). Fall back to walkable banks / mailboxes — never
+    // the AH hall, or everyone piles on the door.
+    WorldPosition const clusterCenter = HangoutCentroid(cluster);
+    std::vector<WorldPosition> nearbyFountains;
+    for (WorldPosition const& fountain : fountains)
+    {
+        if (fountain.GetMapId() == clusterCenter.GetMapId()
+            && fountain.GetExactDist(clusterCenter) <= HANGOUT_CLUSTER)
+            nearbyFountains.push_back(fountain);
+    }
+    std::vector<WorldPosition> plazaAnchors = nearbyFountains;
+    if (plazaAnchors.empty())
+    {
+        for (WorldPosition const& pos : cluster)
+            if (OnWalkMesh(pos))
+                plazaAnchors.push_back(pos);
+        for (WorldPosition const& box : mailboxes)
+            if (OnWalkMesh(box) && box.GetExactDist(clusterCenter) <= HANGOUT_MAIL_RADIUS)
+                plazaAnchors.push_back(box);
+    }
+
+    WorldPosition plaza = !plazaAnchors.empty()
+        ? SnapToGround(HangoutCentroid(plazaAnchors))
+        : SnapToGround(clusterCenter);
+    if (!OnWalkMesh(plaza) && !plazaAnchors.empty())
+        plaza = plazaAnchors.front();
+
+    if (!auctioneers.empty())
+    {
+        WorldPosition const ahCenter = HangoutCentroid(auctioneers);
+        hub.ahSpots.push_back(ahCenter);
+        for (WorldPosition const& auctioneer : auctioneers)
+            hub.ahSpots.push_back(auctioneer);
+
+        uint32 walkableAh = 0;
+        for (WorldPosition const& pos : hub.ahSpots)
+        {
+            if (OnWalkMesh(pos))
+            {
+                AddHangout(hub.ahHangouts, pos, 2);
+                ++walkableAh;
+            }
+        }
+
+        if (!walkableAh)
+        {
+            WorldPosition door = SnapToGround(TowardPlaza(ahCenter, plaza, HANGOUT_DOOR_OFFSET));
+            if (!OnWalkMesh(door) && OnWalkMesh(plaza))
+                door = plaza;
+            AddHangout(hub.ahHangouts, door, 2);
+            LOG_INFO("module", "CircadianBot: {} AH hall is off the mmap; hangout stays on the square",
+                hub.name);
+        }
+    }
+
+    AddHangout(hub.plazaHangouts, plaza, 3);
+    AddPlazaRing(hub.plazaHangouts, plaza);
+    for (WorldPosition const& fountain : nearbyFountains)
+        AddPlazaRing(hub.plazaHangouts, fountain);
 
     for (WorldPosition const& box : mailboxes)
     {
         if (box.GetMapId() == plaza.GetMapId() && box.GetExactDist(plaza) <= HANGOUT_MAIL_RADIUS)
-            hub.hangouts.push_back(box);
+            AddHangout(hub.plazaHangouts, box, 1);
     }
+
+    uint32 chairSpots = 0;
+    for (WorldPosition const& chair : chairs)
+    {
+        if (chairSpots >= 8)
+            break;
+        if (chair.GetMapId() != plaza.GetMapId() || chair.GetExactDist(plaza) > 22.0f)
+            continue;
+        if (!OnWalkMesh(chair))
+            continue;
+        AddHangout(hub.plazaHangouts, chair, 1);
+        ++chairSpots;
+    }
+
+    MergeHangouts(hub);
 }
 
 bool BotFitsHub(Player const* bot, CityHub const& hub)
@@ -346,6 +505,85 @@ uint32 HangoutHoldChance(uint32 cityOnline, uint32 cityTarget, bool sessionActiv
     if (chance > 90)
         chance = 90;
     return chance;
+}
+
+// Keep roughly half the square at the AH. Moves a couple of bots per
+// hub per tick so a seed mix does not collapse to the fountain.
+void RebalanceAhPlaza()
+{
+    PlayerBotMap const bots = sRandomPlayerbotMgr.GetAllBots();
+    for (CityHub const& hub : g_cityHubs)
+    {
+        if (!hub.resolved || hub.ahHangouts.empty() || hub.plazaHangouts.empty())
+            continue;
+
+        std::vector<Player*> atAh;
+        std::vector<Player*> atPlaza;
+        for (auto const& [guid, player] : bots)
+        {
+            if (!player || !sRandomPlayerbotMgr.IsRandomBot(player))
+                continue;
+            if (player->GetZoneId() != hub.zoneId || !OnHangoutSquare(player, hub))
+                continue;
+            if (player->GetGroup() || player->IsInCombat() || player->IsBeingTeleported())
+                continue;
+            if (player->HasUnitState(UNIT_STATE_IN_FLIGHT) || player->IsInFlight())
+                continue;
+
+            PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
+            if (!botAI)
+                continue;
+            NewRpgStatus const status = botAI->rpgInfo.GetStatus();
+            if (status != RPG_REST && status != RPG_WANDER_RANDOM && status != RPG_IDLE)
+                continue;
+
+            if (NearAhHangout(player, hub))
+                atAh.push_back(player);
+            else
+                atPlaza.push_back(player);
+        }
+
+        uint32 const square = static_cast<uint32>(atAh.size() + atPlaza.size());
+        if (square < 8)
+            continue;
+
+        uint32 const wantAh = square / 2;
+        int32 const delta = static_cast<int32>(atAh.size()) - static_cast<int32>(wantAh);
+        int32 const slack = std::max(3, static_cast<int32>(square / 10));
+        uint32 moved = 0;
+        uint32 const maxMoves = 2;
+
+        if (delta > slack)
+        {
+            ShufflePlayers(atAh);
+            for (Player* bot : atAh)
+            {
+                if (moved >= maxMoves)
+                    break;
+                WorldPosition const* dest = PickFrom(hub.plazaHangouts);
+                PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+                if (!dest || !botAI)
+                    continue;
+                botAI->rpgInfo.ChangeToGoCamp(*dest);
+                ++moved;
+            }
+        }
+        else if (delta < -slack)
+        {
+            ShufflePlayers(atPlaza);
+            for (Player* bot : atPlaza)
+            {
+                if (moved >= maxMoves)
+                    break;
+                WorldPosition const* dest = PickFrom(hub.ahHangouts);
+                PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+                if (!dest || !botAI)
+                    continue;
+                botAI->rpgInfo.ChangeToGoCamp(*dest);
+                ++moved;
+            }
+        }
+    }
 }
 } // namespace
 
@@ -636,6 +874,8 @@ void CircadianBot::ResolveCityHubs()
     std::unordered_map<uint32, std::vector<WorldPosition>> banks;
     std::unordered_map<uint32, std::vector<WorldPosition>> auctioneers;
     std::unordered_map<uint32, std::vector<WorldPosition>> mailboxes;
+    std::unordered_map<uint32, std::vector<WorldPosition>> fountains;
+    std::unordered_map<uint32, std::vector<WorldPosition>> chairs;
     std::unordered_map<uint32, WorldPosition> fallbackBanker;
 
     for (CityHub const& hub : g_cityHubs)
@@ -675,7 +915,13 @@ void CircadianBot::ResolveCityHubs()
     {
         GameObjectData const& data = itr.second;
         GameObjectTemplate const* tmpl = sObjectMgr->GetGameObjectTemplate(data.id);
-        if (!tmpl || tmpl->type != GAMEOBJECT_TYPE_MAILBOX)
+        if (!tmpl)
+            continue;
+
+        bool const isMail = tmpl->type == GAMEOBJECT_TYPE_MAILBOX;
+        bool const isChair = tmpl->type == GAMEOBJECT_TYPE_CHAIR;
+        bool const isFountain = IsFountainTemplate(tmpl);
+        if (!isMail && !isChair && !isFountain)
             continue;
 
         uint32 const zoneId = sMapMgr->GetZoneId(PHASEMASK_NORMAL, data.mapid, data.posX, data.posY, data.posZ);
@@ -683,7 +929,13 @@ void CircadianBot::ResolveCityHubs()
         if (!hub || hub->mapId != data.mapid)
             continue;
 
-        mailboxes[hub->zoneId].push_back(WorldPosition(data.mapid, data.posX, data.posY, data.posZ, data.orientation));
+        WorldPosition const pos(data.mapid, data.posX, data.posY, data.posZ, data.orientation);
+        if (isMail)
+            mailboxes[hub->zoneId].push_back(pos);
+        if (isFountain)
+            fountains[hub->zoneId].push_back(pos);
+        if (isChair)
+            chairs[hub->zoneId].push_back(pos);
     }
 
     uint32 resolved = 0;
@@ -729,7 +981,8 @@ void CircadianBot::ResolveCityHubs()
             }
         }
 
-        BuildPlazaHangouts(hub, cluster, mailboxes[hub.zoneId], auctioneers[hub.zoneId]);
+        BuildPlazaHangouts(hub, cluster, mailboxes[hub.zoneId], auctioneers[hub.zoneId],
+            fountains[hub.zoneId], chairs[hub.zoneId]);
 
         if (!hub.hangouts.empty())
         {
@@ -806,18 +1059,30 @@ void CircadianBot::ApplyCityHangout(Player* bot)
     EnsureHangoutSession(bot);
 
     CityHub const* hub = HubByZone(bot->GetZoneId());
+    if (hub && hub->resolved && !OnWalkMesh(WorldPosition(bot)))
+    {
+        // Indoor hall or a leftover air spline. Walking from here
+        // flies through the roof; snap to the square instead.
+        if (WorldPosition const* dest = PickHangout(*hub, true))
+            TeleportBotTo(bot, *dest);
+        botAI->rpgInfo.ChangeToRest();
+        bot->SetStandState(UNIT_STAND_STATE_SIT);
+        return;
+    }
+
     if (hub && hub->resolved && !OnHangoutSquare(bot, *hub))
     {
-        if (WorldPosition const* dest = PickHangout(*hub))
+        if (WorldPosition const* dest = PickHangout(*hub, true))
         {
             botAI->rpgInfo.ChangeToGoCamp(*dest);
             return;
         }
     }
 
-    // Stay on the square. WanderNpc walks to trainers across the city.
+    // Stay put on the square. WanderRandom walks the whole city and
+    // drains the AH; rest keeps the seeded mix.
     uint32 const roll = urand(1, 100);
-    if (roll <= 40)
+    if (roll <= 75)
     {
         botAI->rpgInfo.ChangeToRest();
         bot->SetStandState(UNIT_STAND_STATE_SIT);
@@ -880,6 +1145,11 @@ void CircadianBot::ExtendCityDwell()
         CityHub const* hub = HubByZone(player->GetZoneId());
         bool const onSquare = hub && OnHangoutSquare(player, *hub);
         bool const localHangout = (status == RPG_REST || status == RPG_WANDER_RANDOM);
+        if (hub && !OnWalkMesh(WorldPosition(player)))
+        {
+            ApplyCityHangout(player);
+            continue;
+        }
         if (localHangout && onSquare)
             continue;
 
@@ -921,7 +1191,7 @@ bool CircadianBot::TryWalkToCapital(Player* bot)
     if (!botAI)
         return false;
 
-    WorldPosition const* dest = PickHangout(*hub);
+    WorldPosition const* dest = PickHangout(*hub, true);
     if (!dest)
         return false;
 
@@ -1183,13 +1453,17 @@ bool CircadianBot::TeleportBotTo(Player* bot, WorldPosition const& dest)
     if (!bot || dest == WorldPosition())
         return false;
 
-    float const x = dest.GetPositionX() + frand(-6.0f, 6.0f);
-    float const y = dest.GetPositionY() + frand(-6.0f, 6.0f);
+    float const x = dest.GetPositionX() + frand(-2.0f, 2.0f);
+    float const y = dest.GetPositionY() + frand(-2.0f, 2.0f);
     float z = dest.GetPositionZ();
     if (Map const* map = sMapMgr->CreateBaseMap(dest.GetMapId()))
     {
-        float const ground = map->GetHeight(PHASEMASK_NORMAL, x, y, z + 5.0f, true);
-        if (ground > INVALID_HEIGHT)
+        float const ground = map->GetHeight(PHASEMASK_NORMAL, x, y, z + 2.0f, true);
+        float dz = ground - dest.GetPositionZ();
+        if (dz < 0.0f)
+            dz = -dz;
+        // Reject street / roof snaps — Stormwind AH XY maps to the cobbles.
+        if (ground > INVALID_HEIGHT && dz <= HANGOUT_GROUND_SLOP)
             z = ground + 0.05f;
     }
 
@@ -1318,7 +1592,7 @@ void CircadianBot::SeedCityHangouts()
             if (!bot)
                 break;
 
-            WorldPosition const* dest = PickHangout(*plan.hub);
+            WorldPosition const* dest = PickHangout(*plan.hub, true);
             if (!dest || !TeleportBotTo(bot, *dest))
                 continue;
 
@@ -1371,6 +1645,7 @@ void CircadianBot::UpdateCityHangout()
         evicts = _logoutsPerTick * 3;
     EvictSurplusCityBots(evicts);
     ExtendCityDwell();
+    RebalanceAhPlaza();
 
     if (!cityTarget)
         return;

@@ -116,7 +116,7 @@ CircadianBot.Weekend.Hour23 = 78
 CircadianBot.CityHangout.Enable = 1
 
 # Once bots have mostly logged in after a worldserver start, teleport
-# to snap each hub to the current hourly crowd (fountain / extras out
+# to snap each hub to the current hourly crowd (square / extras out
 # to the world). After that they walk. Off = 0.
 # Default: 1
 CircadianBot.CityHangout.SeedOnStart = 1

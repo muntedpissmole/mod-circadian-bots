@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026-08-19]
+
+### Fixed
+
+- Stormwind hangouts no longer path or teleport onto the auction-house floor. That hall is off the mmap, so dests there sent bots jumping through the air across the city. Indoor halls stay on the square (AH door, bank, mailboxes); outdoor auctioneers (Orgrimmar) are still used.
+- AH crowd no longer drains to the fountain. A 30% peel every tick emptied the door in about ten minutes. Idle bots stay put; a slow two-way shuffle keeps about half at the AH.
+
+### Changed
+
+- City hangouts split between the auction house and the fountain / commons. About half the crowd stays at the AH; the rest seed and walk to the fountain, bank square, mailboxes, and nearby chairs.
+
 ## [2026-08-18]
 
 ### Added
